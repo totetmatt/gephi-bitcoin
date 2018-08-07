@@ -8,6 +8,8 @@ Done quickly 5 years ago, reshaped to make it works with recent version of pytho
 * Download or Clone project
 * `pip install -r req.txt`  to install dependencies
 * Open Gephi, create a new project and Start the master server in the Streaming plugin.
+![Gephi Stream Master mode](http://matthieu-totet.fr/Koumin/wp-content/uploads/2013/07/ScreenHunter_01-Jul.-30-08.39.jpg "Master mode")
+
 * `python complete.py` Create a graph by representing in addresses, out addresses and transactions as node and relationship in addresses-[]-> transaction and transaction-[]-> out addresses.
 * `python simple.py` : Same as before , but it will only represent in / out addresses as node and relationship in addresses-[]->out addresses.
 * Watch your gephi and have fun
