@@ -1,20 +1,23 @@
 ﻿from ws4py.client.threadedclient import WebSocketClient
-from GephiStreamer import Node,Edge,GephiStreamerManager
+from gephistreamer import graph
+from gephistreamer import streamer
 import json
-t = GephiStreamerManager()
+import random
+t = streamer.Streamer(streamer.GephiREST(port=8080))
 class DummyClient(WebSocketClient):
     #Bootstrap to register to websocket
     def opened(self):
         self.send('{"op":"unconfirmed_sub"}')
     def closed(self, code, reason=None):
-        print "Closed down", code, reason
+        print("Closed down", code, reason)
     #When we receive a new blockchain
     def received_message(self, m):
         #Loading the data as json
-        data = json.loads("%s"%m)
-        print "==%s=="%data['x']['hash']
+        data = json.loads(str(m))
+        print(json.dumps(data, sort_keys=True, indent=4))
+
         #Created the node that represent the transaction
-        transactionNode = Node(data['x']['hash'],blue=1)
+        transactionNode = graph.Node(data['x']['hash'],blue=1,x = random.randint(0,500),y= random.randint(0,500))
         #With some properties
         for prop in ['vin_sz','vout_sz','lock_time','relayed_by','tx_index','time']:
             transactionNode.property[prop]=data['x'][prop]
@@ -22,35 +25,17 @@ class DummyClient(WebSocketClient):
         transactionNode.property['transaction_size'] = data['x']['size']
         #we type our node
         transactionNode.property['type']='Transaction'
-        t.add_node(transactionNode)
+
         #For all incomming flow
-        for inp in data['x']['inputs']:
-            print inp['prev_out']['addr']
-            #Create a Node with properties
-            inNode = Node(inp['prev_out']['addr'],red=1)
-            inNode.property['type']='Wallet'
-            inNode.property['time']=data['x']["time"]
-            t.add_node(inNode)
-            #Create an edge Wallet-[weight=value of the transaction]->Transaction
-            edge = Edge(inNode,transactionNode,True,weight=inp['prev_out']['value'])
-            edge.property['type'] = inp['prev_out']['type']
-            t.add_edge(edge)
-        print "*"
+        inN = [ graph.Node(inp['prev_out']['addr'],red=1, x = random.randint(0,500),y= random.randint(0,500),type="Wallet",time=data['x']["time"]) for inp in data['x']['inputs']]
+        inE = [ graph.Edge(inp['prev_out']['addr'],transactionNode,True,weight=inp['prev_out']['value'],type=inp['prev_out']['type']) for inp in data['x']['inputs'] ]
+
         #For all outgoing flow
-        for out in  data['x']['out'] : 
-            print out['addr']
-            #Create a Node with properties
-            outNode = Node(out['addr'],red=1)
-            outNode.property['type']='Wallet'
-            outNode.property['time']=data['x']["time"]
-            t.add_node(outNode)
-            #Create an edge Transaction-[weight=value of the transaction]->Wallet
-            edge = Edge(transactionNode,outNode,True,weight=out['value'])
-            edge.property['type'] = out['type']
-            t.add_edge(edge)
-                
-                
-        t.commit()
+        outN = [ graph.Node(out['addr'],red=1,type="Wallet",time=data['x']["time"],x = random.randint(0,500),y= random.randint(0,500)) for out in  data['x']['out'] ] 
+        outE = [graph.Edge(transactionNode,out['addr'],True,weight=out['value'],type=out['type']) for out in  data['x']['out']  ]    
+
+        t.add_node(transactionNode,*inN,*outN)
+        t.add_edge(*inE,*outE)
 
 if __name__ == '__main__':
     try:

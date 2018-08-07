@@ -1,35 +1,31 @@
 from ws4py.client.threadedclient import WebSocketClient
-from GephiStreamer import Node,Edge,GephiStreamerManager
+from gephistreamer import graph
+from gephistreamer import streamer
 import json
-t = GephiStreamerManager()
+import random
+import itertools
+
+t = streamer.Streamer(streamer.GephiREST(port=8080))
 class DummyClient(WebSocketClient):
     def opened(self):
         self.send('{"op":"unconfirmed_sub"}')
     def closed(self, code, reason=None):
-        print "Closed down", code, reason
+        print("Closed down", code, reason)
 
     def received_message(self, m):
-        print "===="
         inNode = []
         outNode = []
-        data = json.loads("%s"%m)
+        data = json.loads(str(m))
+        print(json.dumps(data, sort_keys=True, indent=4))
         #Get All in Nodes of the transaction
-        for inp in data['x']['inputs']:
-            print inp['prev_out']['addr']
-            inNode+=[Node(inp['prev_out']['addr'])]
-        print "*"
+        inNode = [graph.Node(inp['prev_out']['addr'],x = random.randint(0,500),y= random.randint(0,500)) for inp in data['x']['inputs']]
         #Get All out Nodes of the transaction
-        for out in  data['x']['out'] : 
-            print out['addr']
-            outNode += [Node(out['addr'])]
+        outNode = [ graph.Node(out['addr'],x = random.randint(0,500),y= random.randint(0,500)) for out in  data['x']['out'] ] 
+          
         #Graph All the Things !
-        for n in inNode:
-            t.add_node(n)
-            for o in outNode:
-                t.add_node(o)
-                t.add_edge(Edge(n,o,True))
-        t.commit()
-         
+        t.add_node(*inNode,*outNode)
+        t.add_edge(*[ graph.Edge(n,o,True) for n,o in itertools.product(inNode,outNode) ])
+
 if __name__ == '__main__':
     try:
         ws = DummyClient("wss://ws.blockchain.info/inv", protocols=['http-only', 'chat'])
